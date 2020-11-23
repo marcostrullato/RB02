@@ -56,24 +56,52 @@
 	raspicam node END
 	-->
 	<!-- freenect nodes START -->
+	<!--
 	<group ns="camera">
-		<node if="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabmap_ros/rgbd_sync camera_nodelet_manager" output="screen">
-			<param name="compressed_rate" type="double" value="$(arg rate)" />
-			<param name="approx_sync" type="bool" value="$(arg approx_sync)" />
-			<remap from="rgb/image" to="rgb/image_rect_color" />
-			<remap from="depth/image" to="depth_registered/image_raw" />
-			<remap from="rgb/camera_info" to="rgb/camera_info" />
+	<node if="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabmap_ros/rgbd_sync camera_nodelet_manager" output="screen">
+	<param name="compressed_rate" type="double" value="$(arg rate)" />
+	<param name="approx_sync" type="bool" value="$(arg approx_sync)" />
+	<remap from="rgb/image" to="rgb/image_rect_color" />
+	<remap from="depth/image" to="depth_registered/image_raw" />
+	<remap from="rgb/camera_info" to="rgb/camera_info" />
+	<remap from="rgbd_image" to="rgbd_image" />
+	</node>
+	<node unless="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="data_throttle" args="load rtabmap_ros/data_throttle camera_nodelet_manager" output="screen">
+	<param name="rate" type="double" value="$(arg rate)" />
+	<param name="approx_sync" type="bool" value="$(arg approx_sync)" />
+	<remap from="rgb/image_in" to="rgb/image_rect_color" />
+	<remap from="depth/image_in" to="depth_registered/image_raw" />
+	<remap from="rgb/camera_info_in" to="rgb/camera_info" />
+	<remap from="rgb/image_out" to="throttled/rgb/image_rect_color" />
+	<remap from="depth/image_out" to="throttled/depth_registered/image_raw" />
+	<remap from="rgb/camera_info_out" to="throttled/rgb/camera_info" />
+	</node>
+	</group>
+	-->
+	<group ns="rtabmap">
+		<node pkg="nodelet" type="nodelet" name="rgbd_sync" args="standalone rtabmap_ros/rgbd_sync" output="screen">
+			<remap from="rgb/image" to="/camera/rgb/image_rect_color" />
+			<remap from="depth/image" to="/camera/depth_registered/image_raw" />
+			<remap from="rgb/camera_info" to="/camera/rgb/camera_info" />
 			<remap from="rgbd_image" to="rgbd_image" />
+			<!-- output -->
+			<!--
+			Should be true for not synchronized camera topics
+			(e.g., false for kinectv2, zed, realsense, true for xtion, kinect360)
+			-->
+			<param name="approx_sync" value="true" />
 		</node>
-		<node unless="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="data_throttle" args="load rtabmap_ros/data_throttle camera_nodelet_manager" output="screen">
-			<param name="rate" type="double" value="$(arg rate)" />
-			<param name="approx_sync" type="bool" value="$(arg approx_sync)" />
-			<remap from="rgb/image_in" to="rgb/image_rect_color" />
-			<remap from="depth/image_in" to="depth_registered/image_raw" />
-			<remap from="rgb/camera_info_in" to="rgb/camera_info" />
-			<remap from="rgb/image_out" to="throttled/rgb/image_rect_color" />
-			<remap from="depth/image_out" to="throttled/depth_registered/image_raw" />
-			<remap from="rgb/camera_info_out" to="throttled/rgb/camera_info" />
+		<node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
+			<param name="frame_id" type="string" value="base_link" />
+			<param name="subscribe_depth" type="bool" value="false" />
+			<param name="subscribe_rgbd" type="bool" value="true" />
+			<remap from="odom" to="/base_controller/odom" />
+			<remap from="rgbd_image" to="rgbd_image" />
+			<param name="queue_size" type="int" value="10" />
+			<!-- RTAB-Map's parameters -->
+			<param name="RGBD/AngularUpdate" type="string" value="0.01" />
+			<param name="RGBD/LinearUpdate" type="string" value="0.01" />
+			<param name="RGBD/OptimizeFromGraphEnd" type="string" value="false" />
 		</node>
 	</group>
 	<!-- freenect nodes END -->
